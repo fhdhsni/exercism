@@ -1,6 +1,4 @@
 defmodule NucleotideCount do
-  @nucleotides [?A, ?C, ?G, ?T]
-
   @doc """
   Counts individual nucleotides in a NucleotideCount strand.
 
@@ -14,9 +12,10 @@ defmodule NucleotideCount do
   """
   @spec count([char], char) :: non_neg_integer
   def count(strand, nucleotide) do
-
+    strand
+    |> Enum.filter(&(&1 == nucleotide))
+    |> length
   end
-
 
   @doc """
   Returns a summary of counts by nucleotide.
@@ -28,6 +27,24 @@ defmodule NucleotideCount do
   """
   @spec histogram([char]) :: map
   def histogram(strand) do
+    [a, t, c, g] = [?A, ?T, ?C, ?G]
+    
+    result = %{
+      a => 0,
+      t => 0,
+      c => 0,
+      g => 0
+    }
+    
+    result = Enum.reduce(strand, result, fn(el, acc) -> 
+      case el do
+        ?A -> %{acc | a => acc[a] + 1}
+        ?T -> %{acc | t => acc[t] + 1}
+        ?C -> %{acc | c => acc[c] + 1}
+        ?G -> %{acc | g => acc[g] + 1}
+      end
+    end)
 
+    result
   end
 end
