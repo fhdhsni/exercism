@@ -21,12 +21,12 @@ defmodule SpaceAge do
   defp how_much(planet) do
     case planet do
       :mercury -> @mercury
-      :venus -> @venus
-      :earth -> @earth
-      :mars -> @mars
+      :venus   -> @venus
+      :earth   -> @earth
+      :mars    -> @mars
       :jupiter -> @jupiter
-      :saturn -> @saturn
-      :uranus -> @uranus
+      :saturn  -> @saturn
+      :uranus  -> @uranus
       :neptune -> @neptune
     end
   end
