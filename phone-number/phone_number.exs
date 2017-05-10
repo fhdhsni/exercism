@@ -1,5 +1,9 @@
 defmodule Phone do
+  @moduledoc """
+  Utilities to work with phone numbers.
+  """
   @invalid "0000000000"
+
   @doc """
   Remove formatting from a phone number.
 
@@ -8,11 +12,14 @@ defmodule Phone do
 
   ## Examples
 
-  iex> Phone.number("123-456-7890")
-  "1234567890"
+  iex> Phone.number("212-555-0100")
+  "2125550100"
 
-  iex> Phone.number("+1 (303) 555-1212")
-  "3035551212"
+  iex> Phone.number("+1 (212) 555-0100")
+  "2125550100"
+
+  iex> Phone.number("+1 (212) 055-0100")
+  "0000000000"
 
   iex> Phone.number("867.5309")
   "0000000000"
@@ -20,12 +27,12 @@ defmodule Phone do
   @spec number(String.t) :: String.t
   def number(raw) do
     raw
-    |> String.replace(~r/[\s.()-]/, "") # remove reading helpers
+    |> String.replace(~r/[\s+.()-]/, "") # remove decorations
     |> valid?
     |> (fn false -> @invalid; num -> String.replace(num, ~r/^1/, "") end).()
   end
 
-  def valid?(num) do
+  defp valid?(num) do
     Regex.match?(~r/^1?(?:[2-9][0-9]{2}){2}\d{4}$/, num)
     |> (fn true -> num; false -> false end).()
   end
@@ -38,11 +45,14 @@ defmodule Phone do
 
   ## Examples
 
-  iex> Phone.area_code("123-456-7890")
-  "123"
+  iex> Phone.area_code("212-555-0100")
+  "212"
 
-  iex> Phone.area_code("+1 (303) 555-1212")
-  "303"
+  iex> Phone.area_code("+1 (212) 555-0100")
+  "212"
+
+  iex> Phone.area_code("+1 (012) 555-0100")
+  "000"
 
   iex> Phone.area_code("867.5309")
   "000"
@@ -51,7 +61,7 @@ defmodule Phone do
   def area_code(raw) do         
     raw
     |> __MODULE__.number
-    |> String.slice(0, 3)      # the first three numbers are area_code
+    |> String.slice(0, 3)      # the first three digits are area_code
   end
 
   @doc """
@@ -62,8 +72,11 @@ defmodule Phone do
 
   ## Examples
 
-  iex> Phone.pretty("123-456-7890")
-  "(123) 456-7890"
+  iex> Phone.pretty("212-555-0100")
+  "(212) 555-0100"
+
+  iex> Phone.pretty("212-155-0100")
+  "(000) 000-0000"
 
   iex> Phone.pretty("+1 (303) 555-1212")
   "(303) 555-1212"
@@ -76,7 +89,7 @@ defmodule Phone do
     raw
     |> __MODULE__.number
     |> (fn <<area_code::binary-size(3), exchange_code::binary-size(3), rest::binary>> ->
-      "(" <> area_code <> ") " <> exchange_code <> "-" <> rest
+      "(#{area_code}) #{exchange_code}-#{rest}"
     end).()
   end
 end
