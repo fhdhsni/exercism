@@ -12,77 +12,49 @@ defmodule Tournament do
   """
   @spec tally(input :: list(String.t())) :: String.t()
   def tally(input) do
-    # input =
-    # ["Allegoric Alaskans;Blithering Badgers;win",
-    #  "Devastating Donkeys;Courageous Californians;draw",
-    #  "Devastating Donkeys;Allegoric Alaskans;win",
-    #  "Courageous Californians;Blithering Badgers;loss",
-    #  "Blithering Badgers;Devastating Donkeys;loss",
-    #  "Allegoric Alaskans;Courageous Californians;win"]
     matches =
       input
-      |> Enum.filter(fn "" -> false; _ -> true end)
-      |> Enum.filter(fn str -> Regex.match?(~r/(loss|win|draw)$/, str) end)
-      |> Enum.filter(fn str -> !Regex.match?(~r/[^a-zA-Z\s\-;]/, str) end)
+      |> Stream.filter(fn "" -> false; _ -> true end)
+      |> Stream.filter(fn str -> Regex.match?(~r/(loss|win|draw)$/, str) end)
+      |> Stream.filter(fn str -> !Regex.match?(~r/[^a-zA-Z\s\-;]/, str) end)
       |> Enum.map(&String.split(&1, ";"))
-    # matches =
-    # [["Allegoric Alaskans", "Blithering Badgers", "win"],
-    #  ["Devastating Donkeys", "Courageous Californians", "draw"],
-    #  ["Devastating Donkeys", "Allegoric Alaskans", "win"],
-    #  ["Courageous Californians", "Blithering Badgers", "loss"],
-    #  ["Blithering Badgers", "Devastating Donkeys", "loss"],
-    #  ["Allegoric Alaskans", "Courageous Californians", "win"]]
 
     teams =
       matches
       |> find_team_names
       |> Enum.sort_by(fn team -> Map.get(team, :name) end)
 
-    # teams =
-    # [%{D: 0, L: 0, MP: 0, P: 0, W: 0, name: "Allegoric Alaskans"},
-    #  %{D: 0, L: 0, MP: 0, P: 0, W: 0, name: "Blithering Badgers"},
-    #  %{D: 0, L: 0, MP: 0, P: 0, W: 0, name: "Devastating Donkeys"},
-    #  %{D: 0, L: 0, MP: 0, P: 0, W: 0, name: "Courageous Californians"}]
-
-    result = Enum.reduce(matches, teams, &update_team_status(&1, &2))
-    # result =
-    # [%{D: 0, L: 1, MP: 3, P: 6, W: 2, name: "Allegoric Alaskans"},
-    #  %{D: 0, L: 2, MP: 3, P: 1, W: 1, name: "Blithering Badgers"},
-    #  %{D: 1, L: 0, MP: 3, P: 5, W: 2, name: "Devastating Donkeys"},
-    #  %{D: 1, L: 2, MP: 3, P: 1, W: 0, name: "Courageous Californians"}]
-
-    sort(result)
+    matches
+    |> Enum.reduce(teams, &update_team_status(&1, &2))
+    |> sort
     |> print
     |> String.trim
     # |> IO.puts
   end
 
-  def update_team_status([team1_name, team2_name, result_of_match], teams) do
-    team1_index = Enum.find_index(teams, fn team -> Map.get(team, :name) == team1_name end)
-    team2_index = Enum.find_index(teams, fn team -> Map.get(team, :name) == team2_name end)
+  defp update_team_status([team1_name, team2_name, result_of_match], teams) do
+    team1_index = find_index(teams, team1_name)
+    team2_index = find_index(teams, team2_name)
 
     teams =
       case result_of_match do
         "win" ->
-          teams = List.replace_at(teams, team1_index, Enum.at(teams, team1_index) |> Map.update!(:W, &(&1 + 1)))
-          teams = List.replace_at(teams, team1_index, Enum.at(teams, team1_index) |> Map.update!(:P, &(&1 + 3)))
-          List.replace_at(teams, team2_index, Enum.at(teams, team2_index) |> Map.update!(:L, &(&1 + 1)))
+          apply_result_effect(teams, team1_index, :W)
+          |> apply_result_effect(team2_index, :L)
+
         "loss" ->
-          teams = List.replace_at(teams, team1_index, Enum.at(teams, team1_index) |> Map.update!(:L, &(&1 + 1)))
-          teams = List.replace_at(teams, team2_index, Enum.at(teams, team2_index) |> Map.update!(:W, &(&1 + 1)))
-          List.replace_at(teams, team2_index, Enum.at(teams, team2_index) |> Map.update!(:P, &(&1 + 3)))
+          apply_result_effect(teams, team1_index, :L)
+          |> apply_result_effect(team2_index, :W)
         "draw" ->
-          teams = List.replace_at(teams, team1_index, Enum.at(teams, team1_index) |> Map.update!(:D, &(&1 + 1)))
-          teams = List.replace_at(teams, team1_index, Enum.at(teams, team1_index) |> Map.update!(:P, &(&1 + 1)))
-          teams = List.replace_at(teams, team2_index, Enum.at(teams, team2_index) |> Map.update!(:D, &(&1 + 1)))
-          List.replace_at(teams, team2_index, Enum.at(teams, team2_index) |> Map.update!(:P, &(&1 + 1)))
+          apply_result_effect(teams, team1_index, :D)
+          |> apply_result_effect(team2_index, :D)
       end
 
-    teams = List.replace_at(teams, team1_index, Enum.at(teams, team1_index) |> Map.update!(:MP, &(&1 + 1)))
-    List.replace_at(teams, team2_index, Enum.at(teams, team2_index) |> Map.update!(:MP, &(&1 + 1)))
+    apply_result_effect(teams, team1_index, :MP)
+    |> apply_result_effect(team2_index, :MP)
   end
 
-  def find_team_names(results) do
+  defp find_team_names(results) do
     results
     |> List.flatten
     |> Enum.uniq
@@ -94,36 +66,77 @@ defmodule Tournament do
       |> Enum.map(fn(team) -> %{D: 0, L: 0, MP: 0, P: 0, W: 0, name: team} end)
   end
 
-  def sort(result) do
+  defp sort(result) do
     result
     |> Enum.sort_by(fn team -> Map.get(team, :P) end, &>=/2)
   end
 
-  def print(result, acc \\ "")
-  def print([], acc), do: acc
-  def print(result, "") do
-    header = first_column("Team") <> column("MP") <> column("W") <> column("D") <> column("L") <> column("P") <> "\n"
-    header = String.trim(header)
-    print(result, header <> "\n")    
+  defp print(result, acc \\ "")
+  defp print([], acc), do: acc
+  defp print(result, "") do
+    header = first_column("Team")
+    <> column("MP")
+    <> column("W")
+    <> column("D")
+    <> column("L")
+    <> column("P")
+    |> String.trim
+
+    print(result, header <> "\n")
   end
 
-  def print([first | rest], acc) do
-    name = Map.get(first, :name)
-    mp = Map.get(first, :MP)
-    w = Map.get(first, :W)
-    d = Map.get(first, :D)
-    l = Map.get(first, :L)
-    p = Map.get(first, :P)
-    acc = acc <> first_column(name) <> column(mp) <> column(w) <> column(d) <> column(l) <> column(p)
-    acc = String.trim(acc)
+  defp print([first | rest], acc) do
+    name = first[:name]
+    mp = first[:MP]
+    w = first[:W]
+    d = first[:D]
+    l = first[:L]
+    p = first[:P]
+
+    acc = acc
+    <> first_column(name)
+    <> column(mp)
+    <> column(w)
+    <> column(d)
+    <> column(l)
+    <> column(p)
+    |> String.trim
     print(rest, acc <> "\n")
   end
 
-  def first_column(str) do
+  defp first_column(str) do
     String.pad_trailing(str, 31)
   end
-  def column(str) do
+
+  defp column(str) do
     "|" <> String.pad_leading(" #{str} ", 4)
+  end
+
+  defp find_index(teams, team_name),
+    do: Enum.find_index(teams, fn team -> team[:name] == team_name end)
+
+  defp apply_result_effect(teams, team_index, :MP) do
+    team = Enum.at(teams, team_index)
+    team = %{team | MP: team[:MP] + 1}
+    List.replace_at(teams, team_index, team)
+  end
+  
+  defp apply_result_effect(teams, team_index, :L) do
+    team = Enum.at(teams, team_index)
+    team = %{team | L: team[:L] + 1}
+    List.replace_at(teams, team_index, team)
+  end
+
+  defp apply_result_effect(teams, team_index, :W) do
+    team = Enum.at(teams, team_index)
+    team = %{team | W: team[:W] + 1, P: team[:P] + 3}
+    List.replace_at(teams, team_index, team)
+  end
+
+  defp apply_result_effect(teams, team_index, :D) do
+    team = Enum.at(teams, team_index)
+    team = %{team | D: team[:D] + 1, P: team[:P] + 1}
+    List.replace_at(teams, team_index, team)
   end
 
 end
