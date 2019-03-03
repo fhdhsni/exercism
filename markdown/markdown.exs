@@ -39,12 +39,12 @@ defmodule Markdown do
     end
   end
 
-  def is_header?(t) do
-    String.starts_with?(t, "#")
+  def is_header?(line) do
+    String.starts_with?(line, "#")
   end
 
-  def is_li?(t) do
-    String.starts_with?(t, "*")
+  def is_li?(line) do
+    String.starts_with?(line, "*")
   end
 
   def parse_header_md_level(header_line) do
