@@ -15,19 +15,18 @@ defmodule Markdown do
     markdown
     |> String.trim()
     |> String.split("\n")
-    |> Enum.map(&process/1)
-    |> Enum.join()
+    |> Enum.map_join("", &process/1)
     |> maybe_add_ul()
   end
 
-  def process(line) do
+  defp process(line) do
     cond do
-      is_header?(line) ->
+      header?(line) ->
         line
         |> parse_header_md_level()
         |> enclose_with_header_tag()
 
-      is_li?(line) ->
+      li?(line) ->
         parse_list_md_level(line)
 
       # it's a paragraph
@@ -39,22 +38,22 @@ defmodule Markdown do
     end
   end
 
-  def is_header?(line) do
+  defp header?(line) do
     String.starts_with?(line, "#")
   end
 
-  def is_li?(line) do
+  defp li?(line) do
     String.starts_with?(line, "*")
   end
 
-  def parse_header_md_level(header_line) do
+  defp parse_header_md_level(header_line) do
     [sharps, text_content] =
       Regex.split(~r/#+/, header_line, parts: 2, include_captures: true, trim: true)
 
     {to_string(String.length(sharps)), String.trim(text_content)}
   end
 
-  def parse_list_md_level(list_line) do
+  defp parse_list_md_level(list_line) do
     list_line
     |> String.trim_leading("* ")
     |> String.split()
@@ -62,27 +61,25 @@ defmodule Markdown do
     |> enclose_with_tag("li")
   end
 
-  def enclose_with_header_tag({header_level, text_content}) do
+  defp enclose_with_header_tag({header_level, text_content}) do
     enclose_with_tag(text_content, "h" <> header_level)
   end
 
-  def enclose_with_tag(text_content, tag_str) do
+  defp enclose_with_tag(text_content, tag_str) do
     "<" <> tag_str <> ">" <> text_content <> "</" <> tag_str <> ">"
   end
 
-  def parse_words_with_md(word_list) do
-    word_list
-    |> Enum.map(&replace_md_with_tag/1)
-    |> Enum.join(" ")
+  defp parse_words_with_md(word_list) do
+    Enum.map_join(word_list, " ", &replace_md_with_tag/1)
   end
 
-  def replace_md_with_tag(word) do
+  defp replace_md_with_tag(word) do
     word
     |> replace_prefix_md()
     |> replace_suffix_md()
   end
 
-  def replace_prefix_md(word) do
+  defp replace_prefix_md(word) do
     cond do
       word =~ ~r/^__/ -> String.replace(word, ~r/^__/, "<strong>", global: false)
       word =~ ~r/^_/ -> String.replace(word, ~r/_/, "<em>", global: false)
@@ -90,7 +87,7 @@ defmodule Markdown do
     end
   end
 
-  def replace_suffix_md(word) do
+  defp replace_suffix_md(word) do
     cond do
       word =~ ~r/__$/ -> String.replace(word, ~r/__$/, "</strong>")
       word =~ ~r/_$/ -> String.replace(word, ~r/_$/, "</em>")
@@ -98,7 +95,7 @@ defmodule Markdown do
     end
   end
 
-  def maybe_add_ul(html_str) do
+  defp maybe_add_ul(html_str) do
     html_str
     |> String.replace("<li>", "<ul>" <> "<li>", global: false)
     |> String.replace_suffix("</li>", "</li>" <> "</ul>")
